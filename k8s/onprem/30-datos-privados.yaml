@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datos-privados
+  namespace: tramites-datos
+  labels: &id001
+    app: datos-privados
+    app.kubernetes.io/part-of: tramites-tributarios
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: datos-privados
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      terminationGracePeriodSeconds: 30
+      automountServiceAccountToken: false
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: datos-privados
+      containers:
+      - name: datos-privados
+        image: tramites/datos:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 200m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sleep
+              - '10'
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: datos-secretos
+              key: POSTGRES_PASSWORD
+        - name: DATABASE_URL
+          value: postgresql+psycopg2://tramites:$(POSTGRES_PASSWORD)@postgres:5432/tramites
+        - name: INTERNAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: datos-secretos
+              key: INTERNAL_API_KEY
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: datos-secretos
+              key: JWT_SECRET
+        - name: KMS_KEYS
+          valueFrom:
+            secretKeyRef:
+              name: datos-secretos
+              key: KMS_KEYS
+      volumes:
+      - name: tmp
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datos-privados
+  namespace: tramites-datos
+  labels:
+    app: datos-privados
+    app.kubernetes.io/part-of: tramites-tributarios
+  annotations:
+    nota: Exponer solo por la red interna del centro de datos (balanceador interno) hacia el túnel VPN / enlace dedicado.
+spec:
+  selector:
+    app: datos-privados
+  ports:
+  - name: http
+    port: 8000
+    targetPort: http
+  type: LoadBalancer
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: datos-privados
+  namespace: tramites-datos
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: datos-privados

@@ -1,0 +1,88 @@
+name: ci-cd
+on:
+  push: {branches: [main]}
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write          # OIDC hacia la nube: sin credenciales de larga duración
+
+env:
+  REGISTRO: ${{ vars.REGISTRO }}            # p. ej. 123456789012.dkr.ecr.sa-east-1.amazonaws.com
+  SERVICIOS: auth ruc rhe declaraciones alertas simulador fraccionamiento pagos documentos datos
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+      - name: Los manifiestos generados están al día
+        run: python scripts/gen_k8s.py && git diff --exit-code k8s
+
+  imagenes:
+    needs: pruebas
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        servicio: [auth, ruc, rhe, declaraciones, alertas, simulador, fraccionamiento, pagos, documentos, datos, portal]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construir imagen
+        run: |
+          if [ "${{ matrix.servicio }}" = "portal" ]; then
+            docker build -f docker/Dockerfile.portal -t tramites-${{ matrix.servicio }}:${{ github.sha }} .
+          else
+            docker build -f docker/Dockerfile.service --build-arg SERVICE=${{ matrix.servicio }} -t tramites-${{ matrix.servicio }}:${{ github.sha }} .
+          fi
+      - name: Análisis de vulnerabilidades (bloquea en severidad alta o crítica)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: tramites-${{ matrix.servicio }}:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: Autenticarse y publicar
+        if: github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Publicar imagen
+        if: github.ref == 'refs/heads/main'
+        run: |
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRO"
+          docker tag tramites-${{ matrix.servicio }}:${{ github.sha }} "$REGISTRO/tramites-${{ matrix.servicio }}:${{ github.sha }}"
+          docker push "$REGISTRO/tramites-${{ matrix.servicio }}:${{ github.sha }}"
+
+  desplegar:
+    if: github.ref == 'refs/heads/main'
+    needs: imagenes
+    runs-on: ubuntu-latest
+    environment: produccion        # requiere aprobación manual configurada en el entorno
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: aws eks update-kubeconfig --name tramites-eks
+      - name: Actualización gradual (rolling) sin interrupción
+        working-directory: k8s/publica
+        run: |
+          for s in auth ruc rhe declaraciones alertas simulador fraccionamiento pagos documentos portal; do
+            kustomize edit set image tramites/$s=$REGISTRO/tramites-$s:${{ github.sha }}
+          done
+          kubectl apply -k .
+          for s in auth ruc rhe declaraciones alertas simulador fraccionamiento pagos portal; do
+            kubectl -n tramites rollout status deploy/$s --timeout=300s
+          done
+      - name: Reversión automática ante falla
+        if: failure()
+        run: |
+          for s in auth ruc rhe declaraciones alertas simulador fraccionamiento pagos portal; do
+            kubectl -n tramites rollout undo deploy/$s || true
+          done

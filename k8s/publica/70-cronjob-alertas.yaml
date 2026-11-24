@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: alertas-despachador
+  namespace: tramites
+spec:
+  schedule: '*/15 * * * *'
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: alertas
+            app.kubernetes.io/part-of: tramites-tributarios
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          containers:
+          - name: despachador
+            image: tramites/alertas:latest
+            command:
+            - python
+            - -m
+            - tramites.alertas.dispatcher
+            envFrom:
+            - configMapRef:
+                name: tramites-config
+            - secretRef:
+                name: tramites-secretos
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 10001
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+              seccompProfile:
+                type: RuntimeDefault
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 200m
+                memory: 128Mi

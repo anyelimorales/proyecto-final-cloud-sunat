@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: datos-privados
+  namespace: tramites
+spec:
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: datos-privados
+  namespace: tramites
+subsets:
+- addresses:
+  - ip: 10.20.0.10
+  ports:
+  - name: http
+    port: 8000

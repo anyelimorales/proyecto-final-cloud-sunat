@@ -1,0 +1,93 @@
+{
+  "_aviso": "VALORES REFERENCIALES. Verificar cada año en el portal de SUNAT (UIT, escalas, tasas, cronograma) antes de cualquier uso real.",
+  "ejercicio": 2026,
+  "uit": 5500,
+  "renta_cuarta": {
+    "tasa_retencion": 0.08,
+    "umbral_retencion_rhe": 1500,
+    "deduccion_porcentaje": 0.2,
+    "deduccion_tope_uit": 24
+  },
+  "pago_a_cuenta": {
+    "tasa": 0.08,
+    "umbral_mensual": 3500,
+    "_aviso": "VALORES REFERENCIALES. La tasa y el umbral mensual del pago a cuenta de cuarta categoría los fija SUNAT cada ejercicio; verifíquelos antes de cualquier uso real."
+  },
+  "deduccion_fija_uit": 7,
+  "gastos_deducibles_tope_uit": 3,
+  "escala_progresiva": [
+    {
+      "hasta_uit": 5,
+      "tasa": 0.08
+    },
+    {
+      "hasta_uit": 20,
+      "tasa": 0.14
+    },
+    {
+      "hasta_uit": 35,
+      "tasa": 0.17
+    },
+    {
+      "hasta_uit": 45,
+      "tasa": 0.2
+    },
+    {
+      "hasta_uit": null,
+      "tasa": 0.3
+    }
+  ],
+  "regimenes": [
+    "Renta de cuarta categoría",
+    "Nuevo RUS",
+    "Régimen Especial (RER)",
+    "Régimen MYPE Tributario",
+    "Régimen General"
+  ],
+  "multas": {
+    "no_presentar_declaracion": {
+      "descripcion": "No presentar la declaración dentro del plazo (Código Tributario, art. 176, numeral 1)",
+      "porcentaje_uit": 0.5
+    },
+    "declarar_cifras_falsas": {
+      "descripcion": "Declarar cifras o datos falsos (art. 178, numeral 1)",
+      "porcentaje_tributo_omitido": 0.5
+    }
+  },
+  "interes": {
+    "tim_mensual": 0.01,
+    "descripcion": "Tasa de interés moratorio, capitalización diaria"
+  },
+  "gradualidad": {
+    "voluntaria_antes_de_notificacion": 0.9,
+    "inducida_dentro_del_plazo": 0.7,
+    "ninguna": 0.0
+  },
+  "fraccionamiento": {
+    "cuotas_min": 2,
+    "cuotas_max": 72,
+    "cuota_minima": 100,
+    "tasa_mensual": 0.01
+  },
+  "cronograma_ilustrativo": {
+    "_aviso": "CRONOGRAMA ILUSTRATIVO. El real lo fija SUNAT cada año por resolución, según el último dígito del RUC.",
+    "dia_vencimiento_mensual": {
+      "0": 12,
+      "1": 13,
+      "2": 14,
+      "3": 15,
+      "4": 16,
+      "5": 17,
+      "6": 18,
+      "7": 19,
+      "8": 20,
+      "9": 21
+    },
+    "declaracion_anual": {
+      "mes_inicio": 3,
+      "mes_fin": 4,
+      "dia_base": 1,
+      "dias_extra_por_digito": 1
+    }
+  }
+}

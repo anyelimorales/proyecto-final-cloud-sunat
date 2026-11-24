@@ -1,0 +1,51 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tramites
+resources:
+- 00-namespace.yaml
+- 10-config-secretos.yaml
+- 20-enlace-datos-privados.yaml
+- 30-alertas.yaml
+- 30-auth.yaml
+- 30-declaraciones.yaml
+- 30-documentos.yaml
+- 30-fraccionamiento.yaml
+- 30-pagos.yaml
+- 30-rhe.yaml
+- 30-ruc.yaml
+- 30-simulador.yaml
+- 40-portal.yaml
+- 50-ingress.yaml
+- 60-networkpolicies.yaml
+- 70-cronjob-alertas.yaml
+images:
+- name: tramites/auth
+  newName: REGISTRO/tramites-auth
+  newTag: latest
+- name: tramites/ruc
+  newName: REGISTRO/tramites-ruc
+  newTag: latest
+- name: tramites/rhe
+  newName: REGISTRO/tramites-rhe
+  newTag: latest
+- name: tramites/declaraciones
+  newName: REGISTRO/tramites-declaraciones
+  newTag: latest
+- name: tramites/alertas
+  newName: REGISTRO/tramites-alertas
+  newTag: latest
+- name: tramites/simulador
+  newName: REGISTRO/tramites-simulador
+  newTag: latest
+- name: tramites/fraccionamiento
+  newName: REGISTRO/tramites-fraccionamiento
+  newTag: latest
+- name: tramites/pagos
+  newName: REGISTRO/tramites-pagos
+  newTag: latest
+- name: tramites/documentos
+  newName: REGISTRO/tramites-documentos
+  newTag: latest
+- name: tramites/portal
+  newName: REGISTRO/tramites-portal
+  newTag: latest

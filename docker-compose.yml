@@ -1,0 +1,87 @@
+# Simulación local de la NUBE HÍBRIDA:
+#   red "publica"  -> portal y microservicios (equivale al clúster Kubernetes en nube pública)
+#   red "privada"  -> base de datos (equivale al centro de datos / nube privada); sin salida al exterior
+#   red "enlace"   -> único puente permitido (equivale al enlace dedicado + VPN IPsec)
+# Los microservicios NO tienen ruta hacia PostgreSQL: solo hablan con "datos-privados" por el enlace.
+name: tramites
+
+x-servicio: &servicio
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  networks: [publica, enlace]
+  environment:
+    DATOS_URL: http://datos-privados:8000
+    INTERNAL_API_KEY: ${INTERNAL_API_KEY:?defina INTERNAL_API_KEY en .env}
+    JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET en .env}
+  depends_on: {datos-privados: {condition: service_healthy}}
+  deploy: {resources: {limits: {cpus: "0.5", memory: 256M}}}
+
+services:
+  portal:
+    build: {context: ., dockerfile: docker/Dockerfile.portal}
+    ports: ["8080:8080"]
+    networks: [publica]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on: [auth, ruc, rhe, declaraciones, alertas, simulador, fraccionamiento, pagos, documentos]
+    restart: unless-stopped
+
+  auth:            {<<: *servicio, build: {context: ., dockerfile: docker/Dockerfile.service, args: {SERVICE: auth}}}
+  ruc:             {<<: *servicio, build: {context: ., dockerfile: docker/Dockerfile.service, args: {SERVICE: ruc}}}
+  rhe:             {<<: *servicio, build: {context: ., dockerfile: docker/Dockerfile.service, args: {SERVICE: rhe}}}
+  declaraciones:   {<<: *servicio, build: {context: ., dockerfile: docker/Dockerfile.service, args: {SERVICE: declaraciones}}}
+  alertas:         {<<: *servicio, build: {context: ., dockerfile: docker/Dockerfile.service, args: {SERVICE: alertas}}}
+  fraccionamiento: {<<: *servicio, build: {context: ., dockerfile: docker/Dockerfile.service, args: {SERVICE: fraccionamiento}}}
+  pagos:           {<<: *servicio, build: {context: ., dockerfile: docker/Dockerfile.service, args: {SERVICE: pagos}}}
+  documentos:      {<<: *servicio, build: {context: ., dockerfile: docker/Dockerfile.service, args: {SERVICE: documentos}}}
+  simulador:
+    <<: *servicio
+    build: {context: ., dockerfile: docker/Dockerfile.service, args: {SERVICE: simulador}}
+    depends_on: {}            # servicio público: no usa datos personales
+
+  datos-privados:
+    build: {context: ., dockerfile: docker/Dockerfile.service, args: {SERVICE: datos}}
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [privada, enlace]
+    environment:
+      DATABASE_URL: postgresql+psycopg2://tramites:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}@postgres:5432/tramites
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      KMS_KEYS: ${KMS_KEYS:?defina KMS_KEYS (clave Fernet) en .env}
+      SEED_DEMO: ${SEED_DEMO:-0}
+    depends_on: {postgres: {condition: service_healthy}}
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    networks: [privada]            # sin ruta desde la red pública
+    environment:
+      POSTGRES_DB: tramites
+      POSTGRES_USER: tramites
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [pgdata:/var/lib/postgresql/data, ./backups:/backups]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U tramites"], interval: 5s, timeout: 3s, retries: 10}
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: [observabilidad]
+    networks: [publica, enlace]
+    volumes: [./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro]
+    ports: ["9090:9090"]
+
+networks:
+  publica: {}
+  enlace: {}
+  privada: {internal: true}
+
+volumes:
+  pgdata: {}

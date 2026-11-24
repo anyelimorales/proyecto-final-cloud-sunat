@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Trámites tributarios para trabajadores independientes</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="saltar" href="#main">Saltar al contenido</a>
+
+  <div class="marco">
+    <!-- Barra lateral: en móvil se convierte en cajón (drawer) -->
+    <aside class="barra" id="barra" aria-label="Navegación principal">
+      <div class="barra-marca">
+        <span class="placa"><img src="/img/logo-sunat.png" alt="SUNAT" width="658" height="176"></span>
+        <button class="icono-btn cerrar-cajon" id="cerrar-menu" type="button" aria-label="Cerrar menú"></button>
+      </div>
+      <nav class="barra-nav" id="menu" aria-label="Secciones"></nav>
+      <div class="barra-pie" id="sesion-lateral"></div>
+    </aside>
+
+    <div class="velo" id="velo" hidden></div>
+
+    <div class="zona">
+      <header class="cabecera">
+        <button class="icono-btn solo-cajon" id="abrir-menu" type="button"
+                aria-label="Abrir menú" aria-expanded="false" aria-controls="barra"></button>
+        <div class="titulo">
+          <h1 id="titulo-vista">Calendario</h1>
+          <p id="sub-vista"></p>
+        </div>
+        <div class="cabecera-acciones" id="cabecera-acciones"></div>
+      </header>
+
+      <div class="cuerpo" id="cuerpo">
+        <main id="main" tabindex="-1"></main>
+        <aside class="panel" id="panel" hidden aria-label="Resumen"></aside>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

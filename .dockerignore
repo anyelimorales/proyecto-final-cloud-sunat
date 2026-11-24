@@ -1,0 +1,8 @@
+.git
+**/__pycache__
+*.db
+.env
+k8s
+infra
+docs
+tests

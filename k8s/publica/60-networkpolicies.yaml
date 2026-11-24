@@ -1,0 +1,161 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: denegar-todo
+  namespace: tramites
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dns
+  namespace: tramites
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: portal-entrada-salida
+  namespace: tramites
+spec:
+  podSelector:
+    matchLabels:
+      app: portal
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - ports:
+    - port: 8080
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: auth
+    ports:
+    - port: 8000
+  - to:
+    - podSelector:
+        matchLabels:
+          app: ruc
+    ports:
+    - port: 8000
+  - to:
+    - podSelector:
+        matchLabels:
+          app: rhe
+    ports:
+    - port: 8000
+  - to:
+    - podSelector:
+        matchLabels:
+          app: declaraciones
+    ports:
+    - port: 8000
+  - to:
+    - podSelector:
+        matchLabels:
+          app: alertas
+    ports:
+    - port: 8000
+  - to:
+    - podSelector:
+        matchLabels:
+          app: simulador
+    ports:
+    - port: 8000
+  - to:
+    - podSelector:
+        matchLabels:
+          app: fraccionamiento
+    ports:
+    - port: 8000
+  - to:
+    - podSelector:
+        matchLabels:
+          app: pagos
+    ports:
+    - port: 8000
+  - to:
+    - podSelector:
+        matchLabels:
+          app: documentos
+    ports:
+    - port: 8000
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: servicios-solo-desde-portal
+  namespace: tramites
+spec:
+  podSelector:
+    matchExpressions:
+    - key: app
+      operator: In
+      values:
+      - auth
+      - ruc
+      - rhe
+      - declaraciones
+      - alertas
+      - simulador
+      - fraccionamiento
+      - pagos
+      - documentos
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: portal
+    ports:
+    - port: 8000
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: servicios-hacia-datos-privados
+  namespace: tramites
+spec:
+  podSelector:
+    matchExpressions:
+    - key: app
+      operator: In
+      values:
+      - auth
+      - ruc
+      - rhe
+      - declaraciones
+      - alertas
+      - fraccionamiento
+      - pagos
+      - documentos
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 10.20.0.0/24
+    ports:
+    - port: 8000

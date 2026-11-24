@@ -1,0 +1,19 @@
+# Reglas de alerta de referencia (Prometheus/Alertmanager o servicio gestionado equivalente)
+groups:
+  - name: tramites
+    rules:
+      - alert: TasaDeErrores5xxAlta
+        expr: sum(rate(http_requests_total{estado=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.02
+        for: 5m
+        labels: {severidad: crítica}
+        annotations: {resumen: "Más del 2 % de respuestas 5xx durante 5 minutos"}
+      - alert: LatenciaP95Alta
+        expr: histogram_quantile(0.95, sum(rate(http_request_seconds_bucket[5m])) by (le, servicio)) > 1
+        for: 10m
+        labels: {severidad: alta}
+        annotations: {resumen: "p95 > 1 s en {{ $labels.servicio }}"}
+      - alert: ServicioCaido
+        expr: up == 0
+        for: 2m
+        labels: {severidad: crítica}
+        annotations: {resumen: "El destino {{ $labels.instance }} no responde"}
