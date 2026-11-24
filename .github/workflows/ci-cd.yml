@@ -27,6 +27,7 @@ jobs:
     needs: pruebas
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         servicio: [auth, ruc, rhe, declaraciones, alertas, simulador, fraccionamiento, pagos, documentos, datos, portal]
     steps:
@@ -46,20 +47,20 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
       - name: Autenticarse y publicar
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && vars.AWS_ROLE_ARN != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
       - name: Publicar imagen
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && vars.AWS_ROLE_ARN != ''
         run: |
           aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRO"
           docker tag tramites-${{ matrix.servicio }}:${{ github.sha }} "$REGISTRO/tramites-${{ matrix.servicio }}:${{ github.sha }}"
           docker push "$REGISTRO/tramites-${{ matrix.servicio }}:${{ github.sha }}"
 
   desplegar:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.AWS_ROLE_ARN != ''
     needs: imagenes
     runs-on: ubuntu-latest
     environment: produccion        # requiere aprobación manual configurada en el entorno
