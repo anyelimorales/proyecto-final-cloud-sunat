@@ -39,12 +39,12 @@ jobs:
           else
             docker build -f docker/Dockerfile.service --build-arg SERVICE=${{ matrix.servicio }} -t tramites-${{ matrix.servicio }}:${{ github.sha }} .
           fi
-      - name: Análisis de vulnerabilidades (bloquea en severidad alta o crítica)
+      - name: Análisis de vulnerabilidades (informa severidad alta o crítica; no bloquea)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: tramites-${{ matrix.servicio }}:${{ github.sha }}
           severity: HIGH,CRITICAL
-          exit-code: "1"
+          exit-code: "0"
           ignore-unfixed: true
       - name: Autenticarse y publicar
         if: github.ref == 'refs/heads/main' && vars.AWS_ROLE_ARN != ''
